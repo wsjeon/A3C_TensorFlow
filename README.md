@@ -1,14 +1,13 @@
-# async_deep_reinforce
+# Asynchronous Methods for Deep Reinforcement Learning
 
-Asynchronous deep reinforcement learning
-
-## About
-
-An attempt to repdroduce Google Deep Mind's paper "Asynchronous Methods for Deep Reinforcement Learning."
-
-http://arxiv.org/abs/1602.01783
-
+## Reference
+### Paper
+https://arxiv.org/abs/1602.01783
+### Original Code
+https://github.com/miyosuda/async_deep_reinforce
 Asynchronous Advantage Actor-Critic (A3C) method for playing "Atari Pong" is implemented with TensorFlow.
+### Modifications
+
 Both A3C-FF and A3C-LSTM are implemented.
 
 Learning result movment after 26 hours (A3C-FF) is like this.

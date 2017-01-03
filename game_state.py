@@ -1,72 +1,63 @@
 # -*- coding: utf-8 -*-
 import sys
 import numpy as np
-import cv2
-from ale_python_interface import ALEInterface
+import gym
 
-from constants import ROM
+import skimage.color
+import skimage.transform
+
+from constants import GYM_ENV
 from constants import ACTION_SIZE
 
 class GameState(object):
-  def __init__(self, rand_seed, display=False, no_op_max=7):
-    self.ale = ALEInterface()
-    self.ale.setInt(b'random_seed', rand_seed)
-    self.ale.setFloat(b'repeat_action_probability', 0.0)
-    self.ale.setBool(b'color_averaging', True)
-    self.ale.setInt(b'frame_skip', 4)
+  def __init__(self, display=False, crop_screen=True, frame_skip=4, no_op_max=30):
+    self._display = display
+    self._crop_screen = crop_screen
+    self._frame_skip = frame_skip
+    if self._frame_skip < 1:
+      self._frame_skip = 1
     self._no_op_max = no_op_max
 
-    if display:
-      self._setup_display()
+    self.env = gym.make(GYM_ENV)
     
-    self.ale.loadROM(ROM.encode('ascii'))
-
-    # collect minimal action set
-    self.real_actions = self.ale.getMinimalActionSet()
-
-    # height=210, width=160
-    self._screen = np.empty((210, 160, 1), dtype=np.uint8)
-
-    self.reset()
+    # print "action space=", self.env.action_space
+    self.reset()   
 
   def _process_frame(self, action, reshape):
-    reward = self.ale.act(action)
-    terminal = self.ale.game_over()
+    reward = 0
+    for i in range(self._frame_skip):
+      observation, r, terminal, _ = self.env.step(action)
+      reward += r
+      if terminal:
+        break
+      # observation shape = (210, 160, 3)
 
-    # screen shape is (210, 160, 1)
-    self.ale.getScreenGrayscale(self._screen)
-    
-    # reshape it into (210, 160)
-    reshaped_screen = np.reshape(self._screen, (210, 160))
-    
-    # resize to height=110, width=84
-    resized_screen = cv2.resize(reshaped_screen, (84, 110))
-    
-    x_t = resized_screen[18:102,:]
+    grayscale_observation = skimage.color.rgb2gray(observation)
+    # shape (210, 160) range = [0.0, 1.0]
+
+    if self._crop_screen:
+      # resize to height=110, width=84
+      resized_observation = skimage.transform.resize(grayscale_observation, (110, 84))
+      resized_observation = resized_observation.astype(np.float32)
+      # crop to fit 84x84
+      x_t = resized_observation[18:102,:]
+    else:
+      # resize to height=84, width=84
+      resized_observation = skimage.transform.resize(grayscale_observation, (84, 84))
+      x_t = resized_observation.astype(np.float32)
+
     if reshape:
       x_t = np.reshape(x_t, (84, 84, 1))
-    x_t = x_t.astype(np.float32)
-    x_t *= (1.0/255.0)
     return reward, terminal, x_t
     
-    
-  def _setup_display(self):
-    if sys.platform == 'darwin':
-      import pygame
-      pygame.init()
-      self.ale.setBool(b'sound', False)
-    elif sys.platform.startswith('linux'):
-      self.ale.setBool(b'sound', True)
-    self.ale.setBool(b'display_screen', True)
-
   def reset(self):
-    self.ale.reset_game()
+    self.env.reset()
     
     # randomize initial state
     if self._no_op_max > 0:
       no_op = np.random.randint(0, self._no_op_max + 1)
       for _ in range(no_op):
-        self.ale.act(0)
+        self.env.step(0)
 
     _, _, x_t = self._process_frame(0, False)
     
@@ -75,10 +66,9 @@ class GameState(object):
     self.s_t = np.stack((x_t, x_t, x_t, x_t), axis = 2)
     
   def process(self, action):
-    # convert original 18 action index to minimal action set index
-    real_action = self.real_actions[action]
-    
-    r, t, x_t1 = self._process_frame(real_action, True)
+    if self._display:
+      self.env.render()
+    r, t, x_t1 = self._process_frame(action, True)
 
     self.reward = r
     self.terminal = t

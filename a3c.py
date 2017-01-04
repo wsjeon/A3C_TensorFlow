@@ -25,6 +25,7 @@ from constants import RMSP_EPSILON
 from constants import RMSP_ALPHA
 from constants import GRAD_NORM_CLIP
 from constants import USE_GPU
+from constants import NUM_GPU
 from constants import USE_LSTM
 
 
@@ -34,10 +35,6 @@ def log_uniform(lo, hi, rate):
   v = log_lo * (1-rate) + log_hi * rate
   return math.exp(v)
 
-device = "/cpu:0"
-if USE_GPU:
-  device = "/gpu:0"
-
 initial_learning_rate = log_uniform(INITIAL_ALPHA_LOW,
                                     INITIAL_ALPHA_HIGH,
                                     INITIAL_ALPHA_LOG_RATE)
@@ -46,11 +43,12 @@ global_t = 0
 
 stop_requested = False
 
-if USE_LSTM:
-  global_network = GameACLSTMNetwork(ACTION_SIZE, -1, device)
-else:
-  global_network = GameACFFNetwork(ACTION_SIZE, -1, device)
+global_device = "/gpu:0"
 
+if USE_LSTM:
+  global_network = GameACLSTMNetwork(ACTION_SIZE, -1, global_device)
+else:
+  global_network = GameACFFNetwork(ACTION_SIZE, -1, global_device)
 
 training_threads = []
 
@@ -61,9 +59,10 @@ grad_applier = RMSPropApplier(learning_rate = learning_rate_input,
                               momentum = 0.0,
                               epsilon = RMSP_EPSILON,
                               clip_norm = GRAD_NORM_CLIP,
-                              device = device)
+                              device = global_device)
 
-for i in range(PARALLEL_SIZE):
+for i in range(PARALLEL_SIZE): # For each threading,
+  device = "/gpu:" + str(i % NUM_GPU) # Separate threads for multiple gpus.
   training_thread = A3CTrainingThread(i, global_network, initial_learning_rate,
                                       learning_rate_input,
                                       grad_applier, MAX_TIME_STEP,
@@ -158,4 +157,3 @@ with open(wall_t_fname, 'w') as f:
   f.write(str(wall_t))
 
 saver.save(sess, CHECKPOINT_DIR + '/' + 'checkpoint', global_step = global_t)
-

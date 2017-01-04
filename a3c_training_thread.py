@@ -109,7 +109,7 @@ class A3CTrainingThread(object):
 
       if (self.thread_index == 0) and (self.local_t % LOG_INTERVAL == 0):
         print("thread "+str(self.thread_index)+"\t| pi={}".format(pi_))
-        print("thread "+str(self.thread_index)+"\t|  V={}".format(value_))
+        print("thread "+str(self.thread_index)+"\t| V={}".format(value_))
 
       # process game
       self.game_state.process(action)
@@ -197,7 +197,7 @@ class A3CTrainingThread(object):
       self.prev_local_t += PERFORMANCE_LOG_INTERVAL
       elapsed_time = time.time() - self.start_time
       steps_per_sec = global_t / elapsed_time
-      print("### Performance : {} STEPS in {:.0f} sec. {:.0f} STEPS/sec. {:.2f}M STEPS/hour".format(
+      print("Performance\t| {} STEPS in {:.0f} sec. {:.0f} STEPS/sec. {:.2f}M STEPS/hour".format(
         global_t,  elapsed_time, steps_per_sec, steps_per_sec * 3600 / 1000000.))
 
     # return advanced local step size

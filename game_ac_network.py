@@ -101,27 +101,25 @@ class GameACFFNetwork(GameACNetwork):
 
     scope_name = "net_" + str(self._thread_index)
     with tf.device(self._device), tf.variable_scope(scope_name) as scope:
-      self.W_conv1, self.b_conv1 = self._conv_variable([8, 8, 4, 32])  # stride=4
-      self.W_conv2, self.b_conv2 = self._conv_variable([4, 4, 32, 64]) # stride=2
-      self.W_conv3, self.b_conv3 = self._conv_variable([3, 3, 64, 64]) # stride=1
+      self.W_conv1, self.b_conv1 = self._conv_variable([8, 8, 4, 16])  # stride=4
+      self.W_conv2, self.b_conv2 = self._conv_variable([4, 4, 16, 32]) # stride=2
 
-      self.W_fc1, self.b_fc1 = self._fc_variable([3136, 512])
+      self.W_fc1, self.b_fc1 = self._fc_variable([2592, 256])
 
       # weight for policy output layer
-      self.W_fc2, self.b_fc2 = self._fc_variable([512, action_size])
+      self.W_fc2, self.b_fc2 = self._fc_variable([256, action_size])
 
       # weight for value output layer
-      self.W_fc3, self.b_fc3 = self._fc_variable([512, 1])
+      self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
 
       # state (input)
       self.s = tf.placeholder("float", [None, 84, 84, 4])
     
       h_conv1 = tf.nn.relu(self._conv2d(self.s,  self.W_conv1, 4) + self.b_conv1)
       h_conv2 = tf.nn.relu(self._conv2d(h_conv1, self.W_conv2, 2) + self.b_conv2)
-      h_conv3 = tf.nn.relu(self._conv2d(h_conv2, self.W_conv3, 1) + self.b_conv3)
 
-      h_conv3_flat = tf.reshape(h_conv2, [-1, 3136])
-      h_fc1 = tf.nn.relu(tf.matmul(h_conv3_flat, self.W_fc1) + self.b_fc1)
+      h_conv2_flat = tf.reshape(h_conv2, [-1, 2592])
+      h_fc1 = tf.nn.relu(tf.matmul(h_conv2_flat, self.W_fc1) + self.b_fc1)
 
       # policy (output)
       self.pi = tf.nn.softmax(tf.matmul(h_fc1, self.W_fc2) + self.b_fc2)
@@ -144,7 +142,6 @@ class GameACFFNetwork(GameACNetwork):
   def get_vars(self):
     return [self.W_conv1, self.b_conv1,
             self.W_conv2, self.b_conv2,
-            self.W_conv3, self.b_conv3,
             self.W_fc1, self.b_fc1,
             self.W_fc2, self.b_fc2,
             self.W_fc3, self.b_fc3]
@@ -159,36 +156,32 @@ class GameACLSTMNetwork(GameACNetwork):
 
     scope_name = "net_" + str(self._thread_index)
     with tf.device(self._device), tf.variable_scope(scope_name) as scope:
-      self.W_conv1, self.b_conv1 = self._conv_variable([8, 8, 4, 32])  # stride=4
-      self.W_conv2, self.b_conv2 = self._conv_variable([4, 4, 32, 64]) # stride=2
-      self.W_conv3, self.b_conv3 = self._conv_variable([3, 3, 64, 64]) # stride=1
+      self.W_conv1, self.b_conv1 = self._conv_variable([8, 8, 4, 16])  # stride=4
+      self.W_conv2, self.b_conv2 = self._conv_variable([4, 4, 16, 32]) # stride=2
       
-      self.W_fc1, self.b_fc1 = self._fc_variable([3136, 512])
-      self.W_fc2, self.b_fc2 = self._fc_variable([512, 256])
+      self.W_fc1, self.b_fc1 = self._fc_variable([2592, 256])
 
       # lstm
       self.lstm = tf.nn.rnn_cell.BasicLSTMCell(256, state_is_tuple=True)
 
       # weight for policy output layer
-      self.W_fc3, self.b_fc3 = self._fc_variable([256, action_size])
+      self.W_fc2, self.b_fc2 = self._fc_variable([256, action_size])
 
       # weight for value output layer
-      self.W_fc4, self.b_fc4 = self._fc_variable([256, 1])
+      self.W_fc3, self.b_fc3 = self._fc_variable([256, 1])
 
       # state (input)
       self.s = tf.placeholder("float", [None, 84, 84, 4])
     
       h_conv1 = tf.nn.relu(self._conv2d(self.s,  self.W_conv1, 4) + self.b_conv1)
       h_conv2 = tf.nn.relu(self._conv2d(h_conv1, self.W_conv2, 2) + self.b_conv2)
-      h_conv3 = tf.nn.relu(self._conv2d(h_conv2, self.W_conv3, 1) + self.b_conv3)
 
-      h_conv3_flat = tf.reshape(h_conv3, [-1, 3136])
-      h_fc1 = tf.nn.relu(tf.matmul(h_conv3_flat, self.W_fc1) + self.b_fc1)
-      h_fc2 = tf.nn.relu(tf.matmul(h_fc1, self.W_fc2) + self.b_fc2)
+      h_conv2_flat = tf.reshape(h_conv2, [-1, 2592])
+      h_fc1 = tf.nn.relu(tf.matmul(h_conv2_flat, self.W_fc1) + self.b_fc1)
       # h_fc1 shape=(5,256)
 
-      h_fc2_reshaped = tf.reshape(h_fc2, [1,-1,256])
-      # h_fc2_reshaped = (1,5,256)
+      h_fc1_reshaped = tf.reshape(h_fc1, [1,-1,256])
+      # h_fc1_reshaped = (1,5,256)
 
       # place holder for LSTM unrolling time step size.
       self.step_size = tf.placeholder(tf.float32, [1])
@@ -204,7 +197,7 @@ class GameACLSTMNetwork(GameACNetwork):
       # When forward propagating, step_size is 1.
       # (time_major = False, so output shape is [batch_size, max_time, cell.output_size])
       lstm_outputs, self.lstm_state = tf.nn.dynamic_rnn(self.lstm,
-                                                        h_fc2_reshaped,
+                                                        h_fc1_reshaped,
                                                         initial_state = self.initial_lstm_state,
                                                         sequence_length = self.step_size,
                                                         time_major = False,
@@ -215,10 +208,10 @@ class GameACLSTMNetwork(GameACNetwork):
       lstm_outputs = tf.reshape(lstm_outputs, [-1,256])
 
       # policy (output)
-      self.pi = tf.nn.softmax(tf.matmul(lstm_outputs, self.W_fc3) + self.b_fc3)
+      self.pi = tf.nn.softmax(tf.matmul(lstm_outputs, self.W_fc2) + self.b_fc2)
       
       # value (output)
-      v_ = tf.matmul(lstm_outputs, self.W_fc4) + self.b_fc4
+      v_ = tf.matmul(lstm_outputs, self.W_fc3) + self.b_fc3
       self.v = tf.reshape( v_, [-1] )
 
       scope.reuse_variables()
@@ -271,9 +264,7 @@ class GameACLSTMNetwork(GameACNetwork):
   def get_vars(self):
     return [self.W_conv1, self.b_conv1,
             self.W_conv2, self.b_conv2,
-            self.W_conv3, self.b_conv3,
             self.W_fc1, self.b_fc1,
             self.W_lstm, self.b_lstm,
             self.W_fc2, self.b_fc2,
-            self.W_fc3, self.b_fc3,
-            self.W_fc4, self.b_fc4]
+            self.W_fc3, self.b_fc3]

@@ -108,8 +108,8 @@ class A3CTrainingThread(object):
       values.append(value_)
 
       if (self.thread_index == 0) and (self.local_t % LOG_INTERVAL == 0):
-        print("pi={}".format(pi_))
-        print(" V={}".format(value_))
+        print("thread "+str(self.thread_index)+"\t| pi={}".format(pi_))
+        print("thread "+str(self.thread_index)+"\t|  V={}".format(value_))
 
       # process game
       self.game_state.process(action)
@@ -130,7 +130,7 @@ class A3CTrainingThread(object):
       
       if terminal:
         terminal_end = True
-        print("score={}".format(self.episode_reward))
+        print("thread "+str(self.thread_index)+"\t| score={}".format(self.episode_reward))
 
         self._record_score(sess, summary_writer, summary_op, score_input,
                            self.episode_reward, global_t)

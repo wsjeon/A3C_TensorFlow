@@ -11,11 +11,12 @@
 ### Modifications
 - I copied the branch "gym" and modified it to use in TF 0.12.
 - Instead of using Arcade Learning Environment directly, OpenAI gym is utilized.
-- The architecture of neural network is set to be that in DeepMind's paper in Nature. 
 
 ## How to run
 - To train,
+
     $python a3c.py
 - To display the result with game play,
+
     $python a3c_display.py
    
